@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+        />
+        <title>集金チェック帳</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            :root {
+                --paper: #f7f8fa;
+                --paper-line: #dee2e7;
+                --ink: #14171b;
+                --ink-soft: #5c6570;
+                --cash: #1e4d8c;
+                --cash-bg: #e4ebf5;
+                --paypay: #b23a2e;
+                --paypay-bg: #f3e1de;
+                --stamp: #1e4d8c;
+                --none-bg: #ecedef;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                background: var(--paper);
+                color: var(--ink);
+                font-family: "Zen Kaku Gothic New", sans-serif;
+                -webkit-tap-highlight-color: transparent;
+            }
+            body {
+                min-height: 100vh;
+                background: var(--paper);
+                padding-bottom: 96px;
+            }
+            .wrap {
+                max-width: 520px;
+                margin: 0 auto;
+                padding: 0 16px;
+            }
+
+            header {
+                padding: 20px 16px 14px;
+                border-bottom: 2px solid var(--ink);
+                max-width: 520px;
+                margin: 0 auto;
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+            }
+            header h1 {
+                font-size: 19px;
+                font-weight: 900;
+                letter-spacing: 0.04em;
+                margin: 0;
+            }
+            header h1 .stamp-mark {
+                display: inline-block;
+                color: var(--stamp);
+                border: 2px solid var(--stamp);
+                border-radius: 50%;
+                font-size: 11px;
+                font-weight: 700;
+                width: 20px;
+                height: 20px;
+                line-height: 16px;
+                text-align: center;
+                transform: rotate(-8deg);
+                margin-right: 6px;
+            }
+            header .count {
+                font-family: "JetBrains Mono", monospace;
+                font-size: 13px;
+                color: var(--ink-soft);
+            }
+
+            /* --- input screen --- */
+            .input-screen {
+                padding-top: 28px;
+            }
+            .input-screen p.hint {
+                font-size: 13px;
+                color: var(--ink-soft);
+                margin: 0 0 10px;
+                line-height: 1.7;
+            }
+            textarea {
+                width: 100%;
+                min-height: 220px;
+                background: #fff;
+                border: 1.5px solid var(--ink);
+                border-radius: 2px;
+                padding: 14px;
+                font-size: 16px;
+                font-family: "Zen Kaku Gothic New", sans-serif;
+                color: var(--ink);
+                resize: vertical;
+                line-height: 1.9;
+                box-shadow: 3px 3px 0 var(--paper-line);
+            }
+            textarea:focus {
+                outline: none;
+                border-color: var(--stamp);
+            }
+            .primary-btn {
+                margin-top: 16px;
+                width: 100%;
+                padding: 15px;
+                background: var(--ink);
+                color: var(--paper);
+                border: none;
+                border-radius: 2px;
+                font-size: 15px;
+                font-weight: 700;
+                letter-spacing: 0.05em;
+                font-family: inherit;
+                cursor: pointer;
+            }
+            .primary-btn:active {
+                transform: translateY(1px);
+            }
+            .primary-btn:disabled {
+                background: #b7af9b;
+            }
+
+            /* --- list screen --- */
+            .list-screen {
+                padding-top: 8px;
+            }
+            ul.items {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+            li.item {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 11px 0;
+                border-bottom: 1px dashed var(--paper-line);
+            }
+            .stamp-box {
+                flex: 0 0 auto;
+                width: 38px;
+                height: 38px;
+                border-radius: 50%;
+                border: 2px solid var(--ink);
+                background: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 13px;
+                font-weight: 700;
+                color: transparent;
+                cursor: pointer;
+                user-select: none;
+                transition: transform 0.12s ease;
+            }
+            .stamp-box.checked {
+                border-color: var(--stamp);
+                color: var(--stamp);
+                transform: rotate(-10deg) scale(1.05);
+                box-shadow: 0 0 0 1px var(--stamp) inset;
+            }
+            .name {
+                flex: 1 1 auto;
+                font-size: 16px;
+                font-weight: 500;
+                overflow-wrap: anywhere;
+            }
+            li.item.checked .name {
+                color: var(--ink-soft);
+                text-decoration: line-through;
+                text-decoration-color: var(--paper-line);
+            }
+
+            .method-btn {
+                flex: 0 0 auto;
+                font-family: "JetBrains Mono", monospace;
+                font-size: 12px;
+                font-weight: 700;
+                letter-spacing: 0.03em;
+                padding: 7px 10px;
+                border-radius: 20px;
+                border: 1.5px solid transparent;
+                cursor: pointer;
+                min-width: 66px;
+                text-align: center;
+            }
+            .method-btn.none {
+                background: var(--none-bg);
+                color: var(--ink-soft);
+                border-color: var(--paper-line);
+            }
+            .method-btn.cash {
+                background: var(--cash-bg);
+                color: var(--cash);
+                border-color: var(--cash);
+            }
+            .method-btn.paypay {
+                background: var(--paypay-bg);
+                color: var(--paypay);
+                border-color: var(--paypay);
+            }
+
+            .empty {
+                text-align: center;
+                padding: 60px 20px;
+                color: var(--ink-soft);
+                font-size: 14px;
+                line-height: 1.8;
+            }
+
+            /* --- bottom action bar --- */
+            .action-bar {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: var(--paper);
+                border-top: 2px solid var(--ink);
+                padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+            }
+            .action-bar .row {
+                max-width: 520px;
+                margin: 0 auto;
+                display: flex;
+                gap: 8px;
+            }
+            .action-bar button {
+                flex: 1;
+                padding: 12px 6px;
+                font-family: inherit;
+                font-size: 13px;
+                font-weight: 700;
+                border-radius: 2px;
+                cursor: pointer;
+                letter-spacing: 0.02em;
+            }
+            .btn-ghost {
+                background: transparent;
+                border: 1.5px solid var(--ink-soft);
+                color: var(--ink-soft);
+            }
+            .btn-danger {
+                background: transparent;
+                border: 1.5px solid #b4453a;
+                color: #b4453a;
+            }
+            .btn-copy {
+                background: var(--ink);
+                border: 1.5px solid var(--ink);
+                color: var(--paper);
+            }
+            .btn-copy.copied {
+                background: var(--stamp);
+                border-color: var(--stamp);
+            }
+
+            .toast {
+                position: fixed;
+                left: 50%;
+                bottom: 88px;
+                transform: translateX(-50%) translateY(10px);
+                background: var(--ink);
+                color: var(--paper);
+                padding: 9px 18px;
+                border-radius: 20px;
+                font-size: 13px;
+                opacity: 0;
+                pointer-events: none;
+                transition: all 0.2s ease;
+                font-weight: 500;
+                white-space: nowrap;
+            }
+            .toast.show {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            .subtotals {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px 14px;
+                padding: 12px 0 10px;
+                font-family: "JetBrains Mono", monospace;
+                font-size: 12px;
+                color: var(--ink-soft);
+                border-bottom: 2px solid var(--ink);
+                margin-bottom: 2px;
+            }
+            .subtotals span b {
+                color: var(--ink);
+                font-weight: 700;
+            }
+            .subtotals span.grand {
+                margin-left: auto;
+                color: var(--ink);
+                font-size: 13px;
+            }
+            .subtotals span.grand b {
+                font-size: 14px;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1><span class="stamp-mark">済</span>集金チェック帳</h1>
+            <div class="count" id="headerCount"></div>
+        </header>
+
+        <div class="wrap">
+            <div id="inputScreen" class="input-screen">
+                <p class="hint">
+                    名前を1行に1人ずつ貼り付けてください。改行ごとにチェックリストを作ります。
+                </p>
+                <textarea
+                    id="namesInput"
+                    placeholder="田中&#10;鈴木&#10;佐藤&#10;山田"
+                ></textarea>
+                <button class="primary-btn" id="createBtn">リストを作成</button>
+            </div>
+
+            <div id="listScreen" class="list-screen" style="display: none">
+                <div class="subtotals" id="subtotals"></div>
+                <ul class="items" id="itemsList"></ul>
+            </div>
+        </div>
+
+        <div class="action-bar" id="actionBar" style="display: none">
+            <div class="row">
+                <button class="btn-ghost" id="backBtn">＋ 追加/編集</button>
+                <button class="btn-danger" id="clearBtn">全削除</button>
+                <button class="btn-copy" id="copyBtn">結果をコピー</button>
+            </div>
+        </div>
+
+        <div class="toast" id="toast"></div>
+
+        <script>
+            (function () {
+                const STORAGE_KEY = "shukin-items";
+                const UNIT_PRICE = 400; // 1人あたりの固定金額(円)
+                let items = []; // {id, name, checked, method: 'none'|'cash'|'paypay'}
+
+                function yen(n) {
+                    return "¥" + n.toLocaleString("ja-JP");
+                }
+
+                const inputScreen = document.getElementById("inputScreen");
+                const listScreen = document.getElementById("listScreen");
+                const actionBar = document.getElementById("actionBar");
+                const namesInput = document.getElementById("namesInput");
+                const itemsList = document.getElementById("itemsList");
+                const headerCount = document.getElementById("headerCount");
+                const subtotals = document.getElementById("subtotals");
+                const toast = document.getElementById("toast");
+
+                function showToast(msg) {
+                    toast.textContent = msg;
+                    toast.classList.add("show");
+                    clearTimeout(showToast._t);
+                    showToast._t = setTimeout(
+                        () => toast.classList.remove("show"),
+                        1800,
+                    );
+                }
+
+                async function saveState() {
+                    try {
+                        await window.storage.set(
+                            STORAGE_KEY,
+                            JSON.stringify(items),
+                            false,
+                        );
+                    } catch (e) {
+                        console.error("save failed", e);
+                    }
+                }
+
+                function sanitizeItems(raw) {
+                    if (!Array.isArray(raw)) return [];
+                    const validMethods = new Set(["none", "cash", "paypay"]);
+                    return raw
+                        .filter((it) => it && typeof it === "object")
+                        .map((it) => ({
+                            id:
+                                typeof it.id === "string" ||
+                                typeof it.id === "number"
+                                    ? String(it.id)
+                                    : Date.now() + "-" + Math.random(),
+                            name:
+                                typeof it.name === "string"
+                                    ? it.name.slice(0, 200)
+                                    : "",
+                            checked: it.checked === true,
+                            method: validMethods.has(it.method)
+                                ? it.method
+                                : "cash",
+                        }))
+                        .filter((it) => it.name.length > 0);
+                }
+
+                async function loadState() {
+                    try {
+                        const res = await window.storage.get(
+                            STORAGE_KEY,
+                            false,
+                        );
+                        if (res && typeof res.value === "string") {
+                            const parsed = JSON.parse(res.value);
+                            items = sanitizeItems(parsed);
+                        }
+                    } catch (e) {
+                        // 保存データがない、または壊れている場合は空のリストから開始する
+                        items = [];
+                    }
+                    render();
+                }
+
+                function parseNames(text) {
+                    return text
+                        .split("\n")
+                        .map((s) => s.trim().slice(0, 200))
+                        .filter(Boolean);
+                }
+
+                function createList() {
+                    const names = parseNames(namesInput.value);
+                    if (names.length === 0) return;
+                    items = names.map((name, i) => ({
+                        id: Date.now() + "-" + i,
+                        name,
+                        checked: false,
+                        method: "cash",
+                    }));
+                    saveState();
+                    render();
+                }
+
+                function toggleChecked(id) {
+                    const it = items.find((x) => x.id === id);
+                    if (!it) return;
+                    it.checked = !it.checked;
+                    saveState();
+                    render();
+                }
+
+                function cycleMethod(id) {
+                    const order = ["cash", "paypay", "none"];
+                    const it = items.find((x) => x.id === id);
+                    if (!it) return;
+                    const idx = order.indexOf(it.method);
+                    it.method = order[(idx + 1) % order.length];
+                    saveState();
+                    render();
+                }
+
+                function clearAll() {
+                    if (items.length === 0) {
+                        // nothing to clear, just go back to input
+                        switchToInput();
+                        return;
+                    }
+                    if (!confirm("リストを全て削除します。よろしいですか？"))
+                        return;
+                    items = [];
+                    namesInput.value = "";
+                    saveState();
+                    render();
+                }
+
+                function switchToInput() {
+                    namesInput.value = items.map((i) => i.name).join("\n");
+                    inputScreen.style.display = "block";
+                    listScreen.style.display = "none";
+                    actionBar.style.display = items.length ? "block" : "none";
+                    namesInput.focus();
+                }
+
+                function methodLabel(m) {
+                    return m === "cash"
+                        ? "現金"
+                        : m === "paypay"
+                          ? "PayPay"
+                          : "未";
+                }
+
+                function todayLabel() {
+                    const d = new Date();
+                    const y = d.getFullYear();
+                    const m = d.getMonth() + 1;
+                    const day = d.getDate();
+                    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+                    const w = weekdays[d.getDay()];
+                    return `${y}年${m}月${day}日(${w})`;
+                }
+
+                function buildCopyText() {
+                    const cash = items.filter((i) => i.method === "cash");
+                    const paypay = items.filter((i) => i.method === "paypay");
+                    const none = items.filter((i) => i.method === "none");
+                    const checkedCount = items.filter((i) => i.checked).length;
+
+                    const cashTotal = cash.length * UNIT_PRICE;
+                    const paypayTotal = paypay.length * UNIT_PRICE;
+                    const grandTotal = cashTotal + paypayTotal;
+
+                    let lines = [];
+                    lines.push(`【集金結果】${todayLabel()}`);
+                    lines.push(
+                        `(${checkedCount}/${items.length}件 済 / 単価${yen(UNIT_PRICE)})`,
+                    );
+                    lines.push("");
+                    lines.push(`■ 現金 (${cash.length}人 / ${yen(cashTotal)})`);
+                    cash.forEach((i) =>
+                        lines.push(`  ${i.checked ? "✓" : "・"} ${i.name}`),
+                    );
+                    lines.push("");
+                    lines.push(
+                        `■ PayPay (${paypay.length}人 / ${yen(paypayTotal)})`,
+                    );
+                    paypay.forEach((i) =>
+                        lines.push(`  ${i.checked ? "✓" : "・"} ${i.name}`),
+                    );
+                    if (none.length) {
+                        lines.push("");
+                        lines.push(`■ 未設定 (${none.length}人)`);
+                        none.forEach((i) =>
+                            lines.push(`  ${i.checked ? "✓" : "・"} ${i.name}`),
+                        );
+                    }
+                    lines.push("");
+                    lines.push(`------------------------`);
+                    lines.push(`合計金額: ${yen(grandTotal)}`);
+
+                    return lines.join("\r\n");
+                }
+
+                async function copyResult() {
+                    const text = buildCopyText();
+                    const btn = document.getElementById("copyBtn");
+
+                    function onSuccess() {
+                        btn.classList.add("copied");
+                        btn.textContent = "コピーしました";
+                        showToast("クリップボードにコピーしました");
+                        setTimeout(() => {
+                            btn.classList.remove("copied");
+                            btn.textContent = "結果をコピー";
+                        }, 1500);
+                    }
+
+                    // 一部のアプリ内ブラウザ(LINEなど)ではClipboard APIが使えない/制限されるため、
+                    // 失敗時はexecCommandによるフォールバックを行う
+                    try {
+                        if (navigator.clipboard && window.isSecureContext) {
+                            await navigator.clipboard.writeText(text);
+                            onSuccess();
+                            return;
+                        }
+                        throw new Error("clipboard api unavailable");
+                    } catch (e) {
+                        try {
+                            const temp = document.createElement("textarea");
+                            temp.value = text;
+                            temp.setAttribute("readonly", "");
+                            temp.style.position = "fixed";
+                            temp.style.top = "-1000px";
+                            temp.style.left = "-1000px";
+                            document.body.appendChild(temp);
+                            temp.focus();
+                            temp.select();
+                            temp.setSelectionRange(0, text.length);
+                            const ok = document.execCommand("copy");
+                            document.body.removeChild(temp);
+                            if (ok) {
+                                onSuccess();
+                            } else {
+                                showToast("コピーに失敗しました");
+                            }
+                        } catch (e2) {
+                            showToast("コピーに失敗しました");
+                        }
+                    }
+                }
+
+                function render() {
+                    if (items.length === 0) {
+                        switchToInput();
+                        headerCount.textContent = "";
+                        return;
+                    }
+
+                    inputScreen.style.display = "none";
+                    listScreen.style.display = "block";
+                    actionBar.style.display = "block";
+
+                    const checkedCount = items.filter((i) => i.checked).length;
+                    headerCount.textContent = `${checkedCount} / ${items.length}`;
+
+                    const cashCount = items.filter(
+                        (i) => i.method === "cash",
+                    ).length;
+                    const paypayCount = items.filter(
+                        (i) => i.method === "paypay",
+                    ).length;
+                    const noneCount = items.filter(
+                        (i) => i.method === "none",
+                    ).length;
+                    const cashTotal = cashCount * UNIT_PRICE;
+                    const paypayTotal = paypayCount * UNIT_PRICE;
+                    const grandTotal = cashTotal + paypayTotal;
+
+                    subtotals.innerHTML = `
+      <span>現金 <b>${cashCount}</b>人 <b>${yen(cashTotal)}</b></span>
+      <span>PayPay <b>${paypayCount}</b>人 <b>${yen(paypayTotal)}</b></span>
+      ${noneCount ? `<span>未設定 <b>${noneCount}</b>人</span>` : ""}
+      <span class="grand">合計 <b>${yen(grandTotal)}</b></span>
+    `;
+
+                    itemsList.innerHTML = "";
+                    items.forEach((it) => {
+                        const li = document.createElement("li");
+                        li.className = "item" + (it.checked ? " checked" : "");
+
+                        const stamp = document.createElement("div");
+                        stamp.className =
+                            "stamp-box" + (it.checked ? " checked" : "");
+                        stamp.textContent = "済";
+                        stamp.addEventListener("click", () =>
+                            toggleChecked(it.id),
+                        );
+
+                        const name = document.createElement("div");
+                        name.className = "name";
+                        name.textContent = it.name;
+                        name.addEventListener("click", () =>
+                            toggleChecked(it.id),
+                        );
+
+                        const method = document.createElement("button");
+                        method.className = "method-btn " + it.method;
+                        method.textContent = methodLabel(it.method);
+                        method.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            cycleMethod(it.id);
+                        });
+
+                        li.appendChild(stamp);
+                        li.appendChild(name);
+                        li.appendChild(method);
+                        itemsList.appendChild(li);
+                    });
+                }
+
+                document
+                    .getElementById("createBtn")
+                    .addEventListener("click", createList);
+                document
+                    .getElementById("backBtn")
+                    .addEventListener("click", switchToInput);
+                document
+                    .getElementById("clearBtn")
+                    .addEventListener("click", clearAll);
+                document
+                    .getElementById("copyBtn")
+                    .addEventListener("click", copyResult);
+
+                loadState();
+            })();
+        </script>
+    </body>
+</html>
