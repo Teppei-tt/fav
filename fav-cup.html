@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FAV CUP 試合結果</title>
+<style>
+:root{--bg:#fff;--fg:#111;--sub:#666;--line:#ddd;--acc:#111;--accfg:#fff;--err:#c00;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111;--fg:#eee;--sub:#999;--line:#333;--acc:#eee;--accfg:#111;--err:#f66}}
+:root[data-theme="dark"]{--bg:#111;--fg:#eee;--sub:#999;--line:#333;--acc:#eee;--accfg:#111;--err:#f66}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Hiragino Sans",sans-serif}
+main{max-width:480px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 16px}
+h2{font-size:14px;color:var(--sub);margin:28px 0 8px;font-weight:600}
+table{width:100%;border-collapse:collapse;text-align:center}
+th,td{padding:8px 4px;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--sub);font-weight:600}
+td.n,th.n{text-align:left}
+input,select,button{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px}
+input,select{width:100%;min-width:0}
+button{cursor:pointer}
+button.p{background:var(--acc);color:var(--accfg);border-color:var(--acc);width:100%}
+button.s{padding:6px 10px;font-size:14px}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.row .sc{width:72px;flex:none;text-align:center}
+.vs{text-align:center;color:var(--sub);font-size:13px;margin:-2px 0 6px}
+.err{color:var(--err);font-size:14px;min-height:21px;margin:4px 0}
+.m{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.m small{color:var(--sub);display:block}
+.btns{display:flex;gap:6px;flex:none}
+.danger{margin-top:8px;width:100%;color:var(--err)}
+.tm{display:flex;gap:8px;margin-bottom:8px}.tm input{flex:1}
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:9}
+#ov.on{display:flex}
+#bx{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;max-width:360px;width:100%}
+#bx p{margin:0 0 16px;white-space:pre-line}
+#bx .btns{justify-content:flex-end}
+</style>
+</head>
+<body>
+<main>
+<h1>FAV CUP 試合結果</h1>
+
+<h2>順位</h2>
+<table><thead><tr><th>順位</th><th class="n">チーム</th><th>勝敗</th><th>得点</th><th>失点</th><th>得失点</th></tr></thead><tbody id="rank"></tbody></table>
+
+<h2>試合結果を入力</h2>
+<div class="row"><select id="ta"></select><input id="sa" class="sc" type="number" inputmode="numeric" min="0" step="1" placeholder="点"></div>
+<div class="vs">VS</div>
+<div class="row"><select id="tb"></select><input id="sb" class="sc" type="number" inputmode="numeric" min="0" step="1" placeholder="点"></div>
+<div class="err" id="err"></div>
+<button class="p" id="add">登録</button>
+
+<h2>試合履歴</h2>
+<div id="list"></div>
+
+<h2>チーム名</h2>
+<div id="names"></div>
+<button class="s" id="addt" style="width:100%">＋ チームを追加</button>
+
+<button class="danger" id="rst">大会をリセット</button>
+</main>
+
+<div id="ov"><div id="bx"><p id="msg"></p><div class="btns"><button id="no">キャンセル</button><button id="ok" class="p" style="width:auto">OK</button></div></div></div>
+<script>
+const KEY="favcup-v1",MIN=2,MAX=12;
+const DEF=["チームA","チームB","チームC","チームD"];
+const fresh=()=>({teams:DEF.map((n,i)=>({id:i+1,name:n})),next:5,matches:[]});
+let S=fresh(),editing=-1;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+try{
+  const r=localStorage.getItem(KEY);
+  if(r){
+    const d=JSON.parse(r);
+    if(d&&Array.isArray(d.teams)&&Array.isArray(d.matches)){
+      if(typeof d.teams[0]==="string"){ // 旧形式(番号保存)からの移行
+        S={teams:d.teams.map((n,i)=>({id:i+1,name:n})),next:d.teams.length+1,
+           matches:d.matches.map(m=>({a:m.a+1,b:m.b+1,sa:m.sa,sb:m.sb}))};
+      }else S=d;
+    }
+  }
+}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+// ブラウザ標準の confirm/alert は埋め込み表示だと動かないため、自前のダイアログを使う
+function ask(msg,single){
+  return new Promise(res=>{
+    $("msg").textContent=msg;
+    $("no").style.display=single?"none":"";
+    $("ov").classList.add("on");
+    const done=v=>{$("ov").classList.remove("on");$("ok").onclick=$("no").onclick=null;res(v)};
+    $("ok").onclick=()=>done(true);$("no").onclick=()=>done(false);
+  });
+}
+const nm=id=>{const t=S.teams.find(t=>t.id===id);return t?t.name:"?"};
+
+function standings(){
+  const t=S.teams.map(x=>({id:x.id,n:x.name,w:0,l:0,pf:0,pa:0}));
+  const by={};t.forEach(x=>by[x.id]=x);
+  S.matches.forEach(m=>{
+    const a=by[m.a],b=by[m.b];if(!a||!b)return;
+    a.pf+=m.sa;a.pa+=m.sb;b.pf+=m.sb;b.pa+=m.sa;
+    if(m.sa>m.sb){a.w++;b.l++}else{b.w++;a.l++}
+  });
+  t.forEach(x=>x.d=x.pf-x.pa);
+  t.sort((x,y)=>y.w-x.w||y.d-x.d||y.pf-x.pf||x.id-y.id); // 勝利数→得失点差→総得点
+  let r=1;
+  t.forEach((x,k)=>{
+    if(k>0){const p=t[k-1];if(!(p.w===x.w&&p.d===x.d&&p.pf===x.pf))r=k+1}
+    x.rank=r;
+  });
+  return t;
+}
+const sg=n=>n>0?"+"+n:String(n);
+
+function render(){
+  $("rank").innerHTML=standings().map(x=>`<tr><td>${x.rank}</td><td class="n">${esc(x.n)}</td><td>${x.w}勝${x.l}敗</td><td>${x.pf}</td><td>${x.pa}</td><td>${sg(x.d)}</td></tr>`).join("");
+
+  const ids=S.teams.map(t=>t.id);
+  let ta=+$("ta").value,tb=+$("tb").value;
+  if(!ids.includes(ta))ta=ids[0];
+  if(!ids.includes(tb)||tb===ta)tb=ids.find(i=>i!==ta);
+  const opts=S.teams.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");
+  $("ta").innerHTML=opts;$("tb").innerHTML=opts;
+  $("ta").value=ta;$("tb").value=tb;
+
+  $("list").innerHTML=S.matches.length?S.matches.map((m,k)=>{
+    if(k===editing)return `<div class="m"><div style="flex:1">
+      <small>第${k+1}試合</small>
+      <div class="row"><span style="flex:1">${esc(nm(m.a))}</span><input id="ea" class="sc" type="number" inputmode="numeric" min="0" step="1" value="${m.sa}"></div>
+      <div class="row"><span style="flex:1">${esc(nm(m.b))}</span><input id="eb" class="sc" type="number" inputmode="numeric" min="0" step="1" value="${m.sb}"></div>
+      <div class="err" id="eerr"></div>
+      <div class="btns"><button class="s" data-c>キャンセル</button><button class="s" data-u="${k}">更新</button></div></div></div>`;
+    return `<div class="m"><div><small>第${k+1}試合</small>${esc(nm(m.a))} ${m.sa} - ${m.sb} ${esc(nm(m.b))}</div>
+      <div class="btns"><button class="s" data-e="${k}">編集</button><button class="s" data-d="${k}">削除</button></div></div>`;
+  }).join(""):`<div style="color:var(--sub)">まだありません</div>`;
+
+  $("names").innerHTML=S.teams.map(t=>`<div class="tm"><input data-n="${t.id}" value="${esc(t.name)}" maxlength="12" aria-label="チーム名"><button class="s" data-x="${t.id}"${S.teams.length<=MIN?" disabled":""}>削除</button></div>`).join("");
+  $("addt").disabled=S.teams.length>=MAX;
+}
+
+function parse(v){
+  if(v.trim()==="")return null;
+  return /^\d+$/.test(v.trim())?parseInt(v,10):NaN;
+}
+function check(sa,sb){
+  if(sa===null||sb===null)return"得点を入力してください";
+  if(isNaN(sa)||isNaN(sb))return"得点は0以上の整数で入力してください";
+  if(sa===sb)return"同点のため登録できません";
+  return"";
+}
+
+$("add").onclick=async()=>{
+  const a=+$("ta").value,b=+$("tb").value;
+  const sa=parse($("sa").value),sb=parse($("sb").value);
+  const e=a===b?"別々のチームを選んでください":check(sa,sb);
+  $("err").textContent=e;
+  if(e)return;
+  const dup=S.matches.some(m=>(m.a===a&&m.b===b)||(m.a===b&&m.b===a));
+  if(dup&&!await ask(`${nm(a)} と ${nm(b)} はすでに対戦済みです。\nそのまま登録しますか？`))return;
+  S.matches.push({a,b,sa,sb});
+  save();
+  $("sa").value="";$("sb").value="";
+  render();
+};
+
+$("list").onclick=async ev=>{
+  const t=ev.target;
+  if(t.dataset.e!==undefined){editing=+t.dataset.e;render();}
+  else if(t.dataset.c!==undefined){editing=-1;render();}
+  else if(t.dataset.u!==undefined){
+    const sa=parse($("ea").value),sb=parse($("eb").value),e=check(sa,sb);
+    if(e){$("eerr").textContent=e;return}
+    const m=S.matches[+t.dataset.u];m.sa=sa;m.sb=sb;
+    editing=-1;save();render();
+  }
+  else if(t.dataset.d!==undefined){
+    const k=+t.dataset.d;
+    if(await ask(`第${k+1}試合を削除しますか？`)){S.matches.splice(k,1);editing=-1;save();render();}
+  }
+};
+
+$("names").onchange=async ev=>{
+  const id=+ev.target.dataset.n;if(!id)return;
+  const cur=nm(id);
+  let v=ev.target.value.trim();
+  if(!v)v=cur;
+  if(S.teams.some(t=>t.id!==id&&t.name===v)){await ask("同じチーム名は使えません",true);v=cur;}
+  S.teams.find(t=>t.id===id).name=v;save();render();
+};
+$("names").onclick=async ev=>{
+  const id=+ev.target.dataset.x;if(!id||S.teams.length<=MIN)return;
+  const n=S.matches.filter(m=>m.a===id||m.b===id).length;
+  const msg=n?`「${nm(id)}」を削除しますか？\nこのチームの試合結果${n}件も一緒に削除されます。`:`「${nm(id)}」を削除しますか？`;
+  if(!await ask(msg))return;
+  S.teams=S.teams.filter(t=>t.id!==id);
+  S.matches=S.matches.filter(m=>m.a!==id&&m.b!==id);
+  editing=-1;save();render();
+};
+$("addt").onclick=()=>{
+  if(S.teams.length>=MAX)return;
+  let k=S.teams.length+1,name;
+  do{name="チーム"+(k++)}while(S.teams.some(t=>t.name===name));
+  S.teams.push({id:S.next++,name});
+  save();render();
+};
+
+$("rst").onclick=async()=>{
+  if(await ask("大会をリセットしますか？\n試合結果とチーム名がすべて消え、最初の4チームに戻ります。\nこの操作は元に戻せません。")){S=fresh();editing=-1;save();render();}
+};
+
+render();
+</script>
+</body>
+</html>
